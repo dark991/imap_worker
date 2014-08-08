@@ -1,0 +1,16 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: LifarAV
+ * Date: 17.07.14
+ * Time: 12:08
+ */
+$config = [
+    // Host Settings
+    'host' => '{imap.host.com:143}',
+    'targetDomain' => 'host.com',
+    // Account Settings
+    'login' => 'box@host.com',
+    'password' => 'pass',
+];
+
