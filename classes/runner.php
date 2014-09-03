@@ -11,7 +11,7 @@ namespace Application;
 class Runner
 {
 
-    static private $connectionHandler = false;
+    static private $connectionHandler;
     static private $config = [];
 
     function __construct($connectionHandler, array $config)
@@ -26,6 +26,14 @@ class Runner
         static::$config = $config;
     }
 
+    /** Основной процесс, анализирующий сообщения и принимающий решения, что с ними делать
+     *
+     * Получаем все сообщения из исходной папки
+     * Анализируем заголовки
+     * В зависимости от них принимаем решение, что делать с письмом - вызываем методы и передаем в них ID сообщений
+     *
+     * @return bool Возвращает результат операции
+     */
     public function execute()
     {
         echo '... See INBOX' . PHP_EOL;
@@ -37,30 +45,36 @@ class Runner
         {
             for ($i=1; $i<=$messageCount; ++$i)
             {
-                $header[$i] = @\imap_headerinfo(static::$connectionHandler, $i);
+                $headers[$i] = @\imap_headerinfo(static::$connectionHandler, $i);
 
-                $hostTo = $header[$i]->to[0]->host;
-                $hostFrom = $header[$i]->from[0]->host;
+                $hostTo = $headers[$i]->to[0]->host;
+                $hostFrom = $headers[$i]->from[0]->host;
 
-                if ($hostTo == static::$config['targetDomain'] && $hostFrom != static::$config['targetDomain']) // Входящее внешнее письмо
+                // Входящее внешнее письмо
+                if ($hostTo == static::$config['targetDomain'] && $hostFrom != static::$config['targetDomain'])
                 {
-                    static::moveToBox($header[$i], $i, 'Inbox');
+                    static::moveToBox($headers[$i], $i, 'Inbox');
                 }
-                elseif ($hostTo != static::$config['targetDomain'] && $hostFrom == static::$config['targetDomain']) // Исходящее внешнее письмо
+                // Исходящее внешнее письмо
+                elseif ($hostTo != static::$config['targetDomain'] && $hostFrom == static::$config['targetDomain'])
                 {
-                    static::moveToBox($header[$i], $i, 'Sent');
+                    static::moveToBox($headers[$i], $i, 'Sent');
                 }
-                elseif ($hostTo == static::$config['targetDomain'] && $hostFrom == static::$config['targetDomain']) // Внутренняя переписка
+                // Внутренняя переписка
+                elseif ($hostTo == static::$config['targetDomain'] && $hostFrom == static::$config['targetDomain'])
                 {
-                    static::moveToBox($header[$i], $i, 'Inbox');
+                    static::copyToBox($headers[$i]->to[0]->mailbox, $i, 'Inbox');
+                    static::copyToBox($headers[$i]->from[0]->mailbox, $i, 'Sent');
+                    static::removeMessage($i);
                 }
-                else // Спам
+                // Спам
+                else
                 {
-                    static::moveToBox($header[$i], $i, 'Junk');
+                    static::moveToBox($headers[$i], $i, 'Junk');
                 }
 
-                $header[$i] = null;
-                unset($header[$i]);
+                $headers[$i] = null;
+                unset($headers[$i]);
             }
         }
         // Если не подключились
@@ -73,6 +87,17 @@ class Runner
         return true;
     }
 
+    /**
+     * Переносит сообщения в нужную папку
+     *
+     * @param string $messageObject Объект сообщения
+     *
+     * @param string $messageNumber Номер сообщения
+     *
+     * @param string $box Исходный путь папки
+     *
+     * @return bool||void Возвращает результат операции
+     */
     private static function moveToBox($messageObject, $messageNumber, $box = 'Inbox')
     {
         // Получаем объект заголовков сообщения.
@@ -125,6 +150,13 @@ class Runner
         echo '... Good Work! Proceed next email!' . PHP_EOL;
     }
 
+    /**
+     * Создает коллекцию папок для нужного пользователя
+     *
+     * @param string $boxName Путь и название папки пользователя
+     *
+     * @return bool Возвращает результат операции
+     */
     private static function createBoxCollection($boxName)
     {
         $boxCollection = [
@@ -139,11 +171,47 @@ class Runner
             if (!$createBox || !$subscribeToBox)
             {
                 echo '>>> Error creating or subscribe box \''. $name .'\'!' . PHP_EOL;
+                return false;
             }
             echo '... Box \'' . $name . '\' created and subscribed successful!' . PHP_EOL;
+            return true;
         }
     }
 
+    /**
+     * Копирует сообщение в нужную папку
+     *
+     * @param int $destinationPath Путь к папке назначения пользователя
+     *
+     * @param int $messageNumber Номер сообщения
+     *
+     * @param string $box Название папки
+     *
+     * @return bool Возвращает результат операции
+     */
+    private function copyToBox($destinationPath, $messageNumber, $box)
+    {
+        $copyPath = static::$config['host'] . 'INBOX.' . $destinationPath . '.' . $box;
+        return @\imap_mail_copy(static::$connectionHandler, $messageNumber, $copyPath);
+    }
+
+    /**
+     * Удаляет сообщение
+     *
+     * @param int $messageNumber Номер сообщения
+     *
+     * @return bool Возвращает результат операции
+     */
+    private function removeMessage($messageNumber)
+    {
+        return @\imap_delete(static::$connectionHandler, $messageNumber);
+    }
+
+    /**
+     * Применяет изменения
+     *
+     * @return bool Возвращает результат операции
+     */
     public function clear()
     {
         echo '... No emails found. Expunge box.' . PHP_EOL;
