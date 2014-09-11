@@ -171,10 +171,8 @@ class Runner
             if (!$createBox || !$subscribeToBox)
             {
                 echo '>>> Error creating or subscribe box \''. $name .'\'!' . PHP_EOL;
-                return false;
             }
             echo '... Box \'' . $name . '\' created and subscribed successful!' . PHP_EOL;
-            return true;
         }
     }
 
