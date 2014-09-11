@@ -189,7 +189,7 @@ class Runner
      *
      * @return bool Возвращает результат операции
      */
-    private function copyToBox($destinationPath, $messageNumber, $box)
+    private static function copyToBox($destinationPath, $messageNumber, $box)
     {
         $copyPath = static::$config['host'] . 'INBOX.' . $destinationPath . '.' . $box;
         return @\imap_mail_copy(static::$connectionHandler, $messageNumber, $copyPath);
