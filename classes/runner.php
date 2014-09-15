@@ -32,7 +32,7 @@ class Runner
      * Анализируем заголовки
      * В зависимости от них принимаем решение, что делать с письмом - вызываем методы и передаем в них ID сообщений
      *
-     * @return bool Возвращает результат операции
+     * @return void
      */
     public function execute()
     {
@@ -82,9 +82,7 @@ class Runner
         {
             echo 'Error! Can\'t execute aggregate.'
                 . PHP_EOL;
-            return false;
         }
-        return true;
     }
 
     /**
@@ -96,7 +94,7 @@ class Runner
      *
      * @param string $box Исходный путь папки
      *
-     * @return bool||void Возвращает результат операции
+     * @return void
      */
     private static function moveToBox($messageObject, $messageNumber, $box = 'Inbox')
     {
@@ -105,11 +103,11 @@ class Runner
         // Если есть ящик, переносим письмо в него
         // Если ящика нет, создаем его, подписываемся, переносим письмо в него
         $fromArray = [
-            'mailbox' => $messageObject->from[0]->mailbox,
+            'mailbox' => str_replace('.', '', $messageObject->from[0]->mailbox),
             'host' => $messageObject->from[0]->host,
         ];
         $toArray = [
-            'mailbox' => $messageObject->to[0]->mailbox,
+            'mailbox' => str_replace('.', '', $messageObject->to[0]->mailbox),
             'host' => $messageObject->to[0]->host,
         ];
         $boxName = static::$config['host'] . 'INBOX.' . $toArray['mailbox'];
@@ -145,7 +143,6 @@ class Runner
         if (!@\imap_mail_move(static::$connectionHandler, $messageNumber, 'INBOX.' . $toArray['mailbox'] . '.' . $box))
         {
             echo '>>> Unknown move email error. Exiting!' . PHP_EOL;
-            return false;
         }
         echo '... Good Work! Proceed next email!' . PHP_EOL;
     }
@@ -155,7 +152,7 @@ class Runner
      *
      * @param string $boxName Путь и название папки пользователя
      *
-     * @return bool Возвращает результат операции
+     * @return void
      */
     private static function createBoxCollection($boxName)
     {
@@ -189,7 +186,7 @@ class Runner
      */
     private static function copyToBox($destinationPath, $messageNumber, $box)
     {
-        $copyPath = static::$config['host'] . 'INBOX.' . $destinationPath . '.' . $box;
+        $copyPath = static::$config['host'] . 'INBOX.' . str_replace('.', '', $destinationPath) . '.' . $box;
         return @\imap_mail_copy(static::$connectionHandler, $messageNumber, $copyPath);
     }
 
@@ -208,7 +205,7 @@ class Runner
     /**
      * Применяет изменения
      *
-     * @return bool Возвращает результат операции
+     * @return void Возвращает результат операции
      */
     public function clear()
     {
@@ -216,10 +213,8 @@ class Runner
         if (!@\imap_expunge(static::$connectionHandler))
         {
             echo '>>> Unknown expunge box error. Exiting!' . PHP_EOL;
-            return false;
         }
         echo '... Expunge box done. Well Done! Exiting process.' . PHP_EOL;
-        return true;
     }
 
     function __destruct()
