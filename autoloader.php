@@ -24,7 +24,6 @@ class Scanner
         $imap = new Connect($this->config);
         $runnerHandler = new Runner($imap->connectionHandler, $this->config);
         $runnerHandler->execute();
-        $runnerHandler->clear();
 
         unset($runnerHandler);
         unset($imap);
