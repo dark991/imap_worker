@@ -66,6 +66,12 @@ class Runner
             {
                 $headers = static::getHeaders($i);
 
+                if (!isset($headers->to[0]->host) || !isset($headers->from[0]->host))
+                {
+                    echo $i . '. To: \'' . $headers->to[0]->host . '\' From: \'' . $headers->from[0]->host . '\'';
+                    continue;
+                }
+
                 // Входящее внешнее письмо
                 if ($headers->to[0]->host == static::$config['targetDomain'] && $headers->from[0]->host != static::$config['targetDomain'])
                 {
@@ -124,6 +130,7 @@ class Runner
         }
 
         if (isset($username)){
+            $username = ucfirst($username);
             if(!static::getBoxCollection($username))
             {
                 static::createBoxCollection($username);
@@ -152,6 +159,7 @@ class Runner
         foreach ($names as $n => $array)
         {
             $username = str_replace('.', '', $array[0]);
+            $username = ucfirst($username);
 
             if(!static::getBoxCollection($username))
             {
