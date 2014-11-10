@@ -42,6 +42,23 @@ class Runner
 
     public function execute()
     {
+//        // Производим чистку писем
+//        $messages = @\imap_num_msg(static::$connectionHandler);
+//        if ($messages > 0) {
+//            foreach ($messages as $message) {
+//                static::removeMessage($message);
+//            }
+//        }
+
+//        // Производим чистку папок
+//        $folders = @\imap_list(static::$connectionHandler, static::$config['host'], 'INBOX.*');
+//        if ($folders) {
+//            foreach ($folders as $key => $name) {
+//                @\imap_deletemailbox(static::$connectionHandler,$name);
+//            }
+//        }
+
+        // Распределяем письма по папкам
         $messagesCount = @\imap_num_msg(static::$connectionHandler);
         if ($messagesCount > 0)
         {
@@ -71,7 +88,7 @@ class Runner
                     static::moveToFolder($headers, $i, 'Junk');
                 }
             }
-            return static::finish();
+            static::finish();
         }
     }
 
@@ -85,24 +102,35 @@ class Runner
             'junk' => $path . '.' . imap_utf7_encode('Junk'),
         ];
         foreach ($boxCollection as $key => $foldername) {
-            if (!@\imap_createmailbox(static::$connectionHandler, $foldername)) return false;
-            if (!@\imap_subscribe(static::$connectionHandler, $foldername)) return false;
+            @\imap_createmailbox(static::$connectionHandler, $foldername);
+            @\imap_subscribe(static::$connectionHandler, $foldername);
         }
-        return true;
     }
 
-    private static function moveToFolder($headers, $i, $folder)
+    private static function moveToFolder($headers, $i, $folder = 'Junk')
     {
-        $username = str_replace('.', '', $headers->to[0]->mailbox);
-
-        if(!static::getBoxCollection($username))
-        {
-            if (!static::createBoxCollection($username)) return false;
+        if ($folder=='Inbox') {
+            $username = str_replace('.', '', $headers->to[0]->mailbox);
+            $path = 'INBOX.' . $username . '.' . $folder;
+        }
+        elseif ($folder=='Sent') {
+            $username = str_replace('.', '', $headers->from[0]->mailbox);
+            $path = 'INBOX.' . $username . '.' . $folder;
+        }
+        elseif ($folder=='Junk') {
+            $username = str_replace('.', '', $headers->to[0]->mailbox);
+            //$path = 'INBOX.' . $username . '.Junk';
+            $path = 'Junk';
         }
 
-        if (!@\imap_mail_move(static::$connectionHandler, $i, 'INBOX.' . $username . '.' . $folder)) return false;
+        if (isset($username)){
+            if(!static::getBoxCollection($username))
+            {
+                static::createBoxCollection($username);
+            }
+        }
 
-        return true;
+        @\imap_mail_move(static::$connectionHandler, $i, $path);
     }
 
     /** array $names contains:
@@ -127,23 +155,22 @@ class Runner
 
             if(!static::getBoxCollection($username))
             {
-                if (!static::createBoxCollection($username)) return false;
+                static::createBoxCollection($username);
             }
 
             $copyPath = static::$config['host'] . 'INBOX.' . $username . '.' . $array[1];
-            if (!@\imap_mail_copy(static::$connectionHandler, $i, $copyPath)) return false;
+            @\imap_mail_copy(static::$connectionHandler, $i, $copyPath);
         }
-        return true;
     }
 
     private static function removeMessage($i)
     {
-        return @\imap_delete(static::$connectionHandler, $i);
+        @\imap_delete(static::$connectionHandler, $i);
     }
 
     private static function finish()
     {
-        return @\imap_expunge(static::$connectionHandler);
+        @\imap_expunge(static::$connectionHandler);
     }
 
 }
